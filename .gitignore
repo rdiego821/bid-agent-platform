@@ -1,0 +1,13 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+.env
+
+# IDEs
+.vscode/
+.idea/
+
+# OS
+Thumbs.db
+desktop.ini
