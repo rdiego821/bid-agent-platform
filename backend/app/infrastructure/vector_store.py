@@ -8,18 +8,18 @@ class VectorStoreManager:
         self.client = chromadb.PersistentClient(path=persist_directory)
         self.collection = self.client.get_or_create_collection(name="bids_collection")
 
-    def add_document(self, doc_id: str, text: str, metadata: dict):
-        """Agrega un fragmento de documento al almacén vectorial."""
+    def add_document_chunk(self, doc_id: str, text: str, metadata: dict):
+        """Almacena un fragmento de texto con sus metadatos y su embedding automático."""
         self.collection.add(
             documents=[text],
             metadatas=[metadata],
             ids=[doc_id]
         )
 
-    def search_similar(self, query: str, n_results: int = 3):
-        """Busca fragmentos relevantes similares a una consulta."""
+    def search_relevant_context(self, query: str, n_results: int = 3):
+        """Busca los fragmentos más relevantes basados en similitud semántica (RAG)."""
         results = self.collection.query(
             query_texts=[query],
             n_results=n_results
         )
-        return results
+        return results.get("documents", [[]])[0]

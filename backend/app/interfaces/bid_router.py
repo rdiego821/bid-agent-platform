@@ -4,14 +4,31 @@ from app.domain.bid import BidAnalysisRequest, BidAnalysisResponse
 from app.application.agent_workflow import create_bid_workflow
 from app.infrastructure.database import get_db, engine, Base
 from app.infrastructure.repositories import BidRepository
+from app.infrastructure.vector_store import VectorStoreManager
+import uuid
 
 Base.metadata.create_all(bind=engine)
 
 router = APIRouter(prefix="/api/v1", tags=["Bids"])
 
+# Instanciamos el gestor de ChromaDB (se guardará en la carpeta ./backend/chroma_db)
+vector_store = VectorStoreManager()
+
 @router.post("/analyze-bid", response_model=BidAnalysisResponse)
 async def analyze_bid_endpoint(request: BidAnalysisRequest, db: Session = Depends(get_db)):
     try:
+
+        # 1. Ingesta RAG: Guardar el documento o fragmento en ChromaDB para búsqueda semántica
+        doc_id = str(uuid.uuid4())
+        vector_store.add_document_chunk(
+            doc_id=doc_id,
+            text=request.document_text,
+            metadata={"client_budget": request.client_budget}
+        )
+
+        # 2. Opcional (RAG): Recuperar contexto similar si la base de datos ya tiene historial
+        relevant_chunks = vector_store.search_relevant_context(query=request.document_text, n_results=2)
+
         # Inicializamos el grafo compilado de LangGraph
         app_workflow = create_bid_workflow()
         
@@ -44,4 +61,4 @@ async def analyze_bid_endpoint(request: BidAnalysisRequest, db: Session = Depend
             recommended_action=result["recommended_action"]
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error ejecutando el agente: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error en el flujo RAG/Agente/BD: {str(e)}")
